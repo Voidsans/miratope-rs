@@ -27,7 +27,7 @@ pub fn dual(p: &Polytope) -> Polytope {
 
         for (i, el) in els.iter().enumerate() {
             for &sub in el {
-                let mut du_el = &mut du_els[sub];
+                let du_el = &mut du_els[sub];
                 du_el.push(i);
             }
         }
