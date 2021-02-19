@@ -6,6 +6,7 @@ use std::convert::TryInto;
 
 pub mod convex;
 pub mod off;
+pub mod operations;
 pub mod shapes;
 
 pub type Element = Vec<usize>;

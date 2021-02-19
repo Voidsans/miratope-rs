@@ -1,6 +1,6 @@
-use std::f64::consts::PI as PI64;
 use gcd::Gcd;
 use nalgebra::*;
+use std::f64::consts::PI as PI64;
 
 use super::Polytope;
 
@@ -29,7 +29,8 @@ fn rotations(angle: f64, num: usize, dim: usize) -> Vec<Matrix> {
 pub fn compound(p: Polytope, trans: Vec<Matrix>) -> Polytope {
     let comps = trans.len();
     let el_counts = p.el_counts();
-    let vertices = p.vertices
+    let vertices = p
+        .vertices
         .into_iter()
         .flat_map(|v| trans.iter().map(move |m| m * v.clone()))
         .collect();
@@ -43,7 +44,7 @@ pub fn compound(p: Polytope, trans: Vec<Matrix>) -> Polytope {
         for comp in 0..comps {
             let offset = comp * sub_count;
 
-            for el in els.iter() {
+            for el in els {
                 new_els.push(el.iter().map(|i| i + offset).collect())
             }
         }
@@ -227,11 +228,7 @@ pub fn antiprism_with_height(n: u32, d: u32, h: f64) -> Polytope {
     // Compounds of antiprisms with antiprismatic symmetry must be handled differently
     // than compounds of antiprisms with prismatic symmetry.
     let d = d as usize;
-    let a = if d / g % 2 == 0 {
-        a
-    } else {
-        a * 2.0
-    };
+    let a = if d / g % 2 == 0 { a } else { a * 2.0 };
     compound(
         Polytope::new(vertices, vec![edges, faces, components]),
         rotations(a / (g as f64), g, 3),
