@@ -53,6 +53,7 @@ pub fn build_no_cull_pipeline(shaders: &mut Assets<Shader>) -> PipelineDescripto
             },
             write_mask: ColorWrite::ALL,
         }],
+        name: Some("N-D Projection Pipeline".to_string()),
         ..PipelineDescriptor::new(ShaderStages {
             vertex: shaders.add(Shader::from_glsl(
                 ShaderStage::Vertex,
