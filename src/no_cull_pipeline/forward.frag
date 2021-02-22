@@ -14,10 +14,6 @@ layout(location = 2) in vec2 v_Uv;
 
 layout(location = 0) out vec4 o_Target;
 
-layout(set = 0, binding = 0) uniform Camera {
-    mat4 ViewProj;
-};
-
 layout(set = 1, binding = 0) uniform Lights {
     vec3 AmbientColor;
     uvec4 NumLights;
