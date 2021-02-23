@@ -96,7 +96,7 @@ fn setup(
         .spawn(PbrNoBackfaceBundle {
             mesh: meshes.add(poly.get_mesh()),
             material: materials.add(Color::rgb(0.93, 0.5, 0.93).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
+            //transform: Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
             ..Default::default()
         })
         .with_children(|cb| {
