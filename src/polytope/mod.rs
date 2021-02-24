@@ -8,6 +8,7 @@ use petgraph::{graph::Graph, prelude::NodeIndex, Undirected};
 
 pub mod convex;
 pub mod off;
+pub mod coff;
 pub mod shapes;
 
 pub type Element = Vec<usize>;
