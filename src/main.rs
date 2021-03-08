@@ -176,8 +176,8 @@ fn setup(
         .spawn((
             GlobalTransform::default(),
             Transform::from_translation(Vec3::new(0.02, -0.025, -0.05))
-            * Transform::from_translation(Vec3::new(-0.02, 0.025, 0.05))
-            .looking_at(Vec3::default(), Vec3::unit_y()),
+                * Transform::from_translation(Vec3::new(-0.02, 0.025, 0.05))
+                    .looking_at(Vec3::default(), Vec3::unit_y()),
         ))
         .with_children(|cb| {
             // camera
