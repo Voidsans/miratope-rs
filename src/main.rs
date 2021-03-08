@@ -115,6 +115,13 @@ fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>
                 *p = p.dual();
             }
         }
+
+        if ui.button("Verf").clicked() {
+            for mut p in query.iter_mut() {
+                println!("Verf");
+                *p = p.verf(0);
+            }
+        }
     });
 }
 
@@ -146,8 +153,11 @@ fn setup(
     commands
         .spawn(PbrNoBackfaceBundle {
             mesh: meshes.add(poly.get_mesh()),
+            visible: Visible {
+                is_visible: false,
+                ..Default::default()
+            },
             material: materials.add(Color::rgb(0.93, 0.5, 0.93).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
             ..Default::default()
         })
         .with_children(|cb| {
@@ -165,8 +175,9 @@ fn setup(
         // camera anchor
         .spawn((
             GlobalTransform::default(),
-            Transform::from_translation(Vec3::new(-0.02, 0.025, 0.05))
-                .looking_at(Vec3::default(), Vec3::unit_y()),
+            Transform::from_translation(Vec3::new(0.02, -0.025, -0.05))
+            * Transform::from_translation(Vec3::new(-0.02, 0.025, 0.05))
+            .looking_at(Vec3::default(), Vec3::unit_y()),
         ))
         .with_children(|cb| {
             // camera
