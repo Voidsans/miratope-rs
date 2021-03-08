@@ -48,7 +48,7 @@ use bevy::render::{camera::PerspectiveProjection, pipeline::PipelineDescriptor};
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
 use no_cull_pipeline::PbrNoBackfaceBundle;
 use polytope::geometry::Point;
-use polytope::{off, ElementList, Polytope};
+use polytope::{off, shapes, ElementList, Polytope};
 
 mod input;
 mod no_cull_pipeline;
