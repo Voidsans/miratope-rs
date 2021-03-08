@@ -48,7 +48,7 @@ use bevy::render::{camera::PerspectiveProjection, pipeline::PipelineDescriptor};
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
 use no_cull_pipeline::PbrNoBackfaceBundle;
 use polytope::geometry::Point;
-use polytope::{off, shapes, ElementList, Polytope};
+use polytope::{off, ElementList, Polytope};
 
 mod input;
 mod no_cull_pipeline;
@@ -195,7 +195,7 @@ fn setup(
 fn update_changed_polytopes(
     mut meshes: ResMut<Assets<Mesh>>,
     polies: Query<(&Polytope, &Handle<Mesh>, &Children), Changed<Polytope>>,
-    wfs: Query<(&Handle<Mesh>), Without<Polytope>>,
+    wfs: Query<&Handle<Mesh>, Without<Polytope>>,
 ) {
     for (poly, mesh_handle, children) in polies.iter() {
         let mesh: &mut Mesh = meshes.get_mut(mesh_handle).unwrap();
