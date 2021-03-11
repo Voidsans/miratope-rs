@@ -51,7 +51,8 @@ use bevy::reflect::TypeUuid;
 use bevy::render::{camera::PerspectiveProjection, pipeline::PipelineDescriptor};
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
 use no_cull_pipeline::PbrNoBackfaceBundle;
-use polytope::{geometry::Point, off, shapes, ElementList, Polytope};
+use polytope::geometry::Point;
+use polytope::{off, shapes, ElementList, Polytope};
 
 mod input;
 mod no_cull_pipeline;
@@ -102,6 +103,10 @@ fn update_ui_scale_factor(mut egui_settings: ResMut<EguiSettings>, windows: Res<
 fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>) {
     let ctx = &mut egui_ctx.ctx;
 
+    egui::SidePanel::left("side_panel", 200.0).show(ctx, |ui| {
+        ui.heading("Side Panel");
+    });
+
     egui::TopPanel::top("top_panel").show(ctx, |ui| {
         // The top panel is often a good place for a menu bar:
         egui::menu::bar(ui, |ui| {
@@ -116,16 +121,17 @@ fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>
             for mut p in query.iter_mut() {
                 println!("Dual");
                 *p = p.dual();
+                println!("{}", off::to_src(&p, Default::default()));
+                println!("{}", &p.print_element_types());
             }
         }
 
         if ui.button("Verf").clicked() {
             for mut p in query.iter_mut() {
                 println!("Verf");
-
-                if let Some(verf) = p.verf(0) {
-                    *p = verf
-                };
+                *p = p.verf(0).unwrap();
+                println!("{}", off::to_src(&p, Default::default()));
+                println!("{}", &p.print_element_types());
             }
         }
     });
@@ -138,8 +144,12 @@ fn setup(
     mut shaders: ResMut<Assets<Shader>>,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
 ) {
-    let poly: Polytope = shapes::step_prism(22, &[1, 3]);
+    //let poly: Polytope = shapes::antiprism_with_height(12, 11, 1.0);
+    //let poly: Polytope = shapes::duopyramid_with_height(&shapes::hypercube(3), &shapes::dyad(), 1.0);
+    let poly: Polytope = polytope::off::from_path(&"E:/Digonal_tetrahedroorthowedge.off").unwrap();
+
     println!("{}", off::to_src(&poly, Default::default()));
+    println!("{}", &poly.print_element_types());
 
     pipelines.set_untracked(
         no_cull_pipeline::NO_CULL_PIPELINE_HANDLE,
@@ -211,7 +221,6 @@ fn update_changed_polytopes(
             if let Ok(wf_handle) = wfs.get_component::<Handle<Mesh>>(*child) {
                 let wf: &mut Mesh = meshes.get_mut(wf_handle).unwrap();
                 *wf = poly.get_wireframe();
-
                 break;
             }
         }

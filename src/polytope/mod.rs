@@ -23,6 +23,12 @@ pub struct PolytopeSerde {
     pub elements: Vec<ElementList>,
 }
 
+pub struct ElementType {
+    multiplicity: usize,
+    facet_count: usize,
+    volume: Option<f64>,
+}
+
 impl From<Polytope> for PolytopeSerde {
     fn from(p: Polytope) -> Self {
         PolytopeSerde {
@@ -188,6 +194,8 @@ impl Polytope {
         nums
     }
 
+    /// Gets the coordinates of the vertices of the polytope, including the
+    /// extra vertices needed for the mesh.
     fn get_vertex_coords(&self) -> Vec<[f32; 3]> {
         self.vertices
             .iter()
@@ -202,6 +210,7 @@ impl Polytope {
             .collect()
     }
 
+    /// Builds a mesh from a polytope.
     pub fn get_mesh(&self) -> Mesh {
         let vertices = self.get_vertex_coords();
         let mut indices = Vec::with_capacity(self.triangles.len() * 3);
@@ -223,6 +232,7 @@ impl Polytope {
         mesh
     }
 
+    /// Builds a wireframe from a polytope.
     pub fn get_wireframe(&self) -> Mesh {
         let edges = &self.elements[0];
         let vertices: Vec<_> = self.get_vertex_coords();
@@ -240,7 +250,6 @@ impl Polytope {
         mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.0, 0.0]; vertices.len()]);
         mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         mesh.set_indices(Some(Indices::U16(indices)));
-
         mesh
     }
 
@@ -276,6 +285,8 @@ impl Polytope {
         edge_lengths
     }
 
+    /// Checks whether all of the edge lengths of the polytope are approximately
+    /// equal to a specified one.
     pub fn is_equilateral_with_len(&self, len: f64) -> bool {
         const EPS: f64 = 1e-9;
         let edge_lengths = self.edge_lengths().into_iter();
@@ -312,6 +323,132 @@ impl Polytope {
         let (sub1, sub2) = (edge[0], edge[1]);
 
         (&vertices[sub1] + &vertices[sub2]).norm() / 2.0
+    }
+
+    /// Gets the element "types" of a polytope.
+    pub fn get_element_types(&self) -> Vec<Vec<ElementType>> {
+        const EPS: f64 = 1e-9;
+
+        let rank = self.rank();
+        let mut element_types = Vec::with_capacity(rank + 1);
+        let el_nums = self.el_nums();
+
+        for &el_num in &el_nums {
+            element_types.push(Vec::with_capacity(el_num));
+        }
+
+        let mut types = Vec::with_capacity(rank);
+        let elements = &self.elements;
+        let mut output = Vec::with_capacity(rank + 1);
+
+        // There's only one type of point.
+        types.push(Vec::new());
+        output.push(vec![ElementType {
+            multiplicity: el_nums[0],
+            facet_count: 1,
+            volume: Some(1.0),
+        }]);
+
+        // The edge types are the edges of each different length.
+        let mut edge_types = Vec::new();
+        for length in &self.edge_lengths() {
+            if let Some(index) = edge_types
+                .iter()
+                .position(|&x: &f64| (x - length).abs() < EPS)
+            {
+                element_types[1].push(index);
+            } else {
+                element_types[1].push(edge_types.len());
+                edge_types.push(*length);
+            }
+        }
+        types.push(edge_types);
+
+        let mut edge_types = Vec::with_capacity(types[1].len());
+        for (idx, &edge_type) in types[1].iter().enumerate() {
+            edge_types.push(ElementType {
+                multiplicity: element_types[1].iter().filter(|&x| *x == idx).count(),
+                facet_count: 2,
+                volume: Some(edge_type),
+            })
+        }
+        output.push(edge_types);
+
+        for d in 2..=rank {
+            types.push(Vec::new());
+            for el in &elements[d - 1] {
+                let count = el.len();
+                if let Some(index) = types[d].iter().position(|&x| x == count as f64) {
+                    element_types[d].push(index);
+                } else {
+                    element_types[d].push(types[d].len());
+                    types[d].push(count as f64);
+                }
+            }
+            let mut types_in_rank = Vec::with_capacity(types[d].len());
+            for i in 0..types[d].len() {
+                types_in_rank.push(ElementType {
+                    multiplicity: element_types[d].iter().filter(|&x| *x == i).count(),
+                    facet_count: types[d][i] as usize,
+                    volume: None,
+                })
+            }
+            output.push(types_in_rank);
+        }
+
+        output
+    }
+
+    pub fn print_element_types(&self) -> String {
+        let types = self.get_element_types();
+        let mut output = String::new();
+        let el_names = vec![
+            "Vertices", "Edges", "Faces", "Cells", "Tera", "Peta", "Exa", "Zetta", "Yotta",
+            "Xenna", "Daka", "Henda",
+        ];
+        let el_suffixes = vec![
+            "", "", "gon", "hedron", "choron", "teron", "peton", "exon", "zetton", "yotton",
+            "xennon", "dakon",
+        ];
+
+        output.push_str(&format!("{}:\n", el_names[0]));
+        for t in &types[0] {
+            output.push_str(&format!("{}\n", t.multiplicity));
+        }
+        output.push_str("\n");
+
+        output.push_str(&format!("{}:\n", el_names[1]));
+        for t in &types[1] {
+            output.push_str(&format!(
+                "{} of length {}\n",
+                t.multiplicity,
+                t.volume.unwrap_or(0.0)
+            ));
+        }
+        output.push_str("\n");
+
+        for d in 2..self.rank() {
+            output.push_str(&format!("{}:\n", el_names[d]));
+            for t in &types[d] {
+                output.push_str(&format!(
+                    "{} × {}-{}\n",
+                    t.multiplicity, t.facet_count, el_suffixes[d]
+                ));
+            }
+            output.push_str("\n");
+        }
+
+        output.push_str("Components:\n");
+        for t in &types[self.rank()] {
+            output.push_str(&format!(
+                "{} × {}-{}\n",
+                t.multiplicity,
+                t.facet_count,
+                el_suffixes[self.rank()]
+            ));
+        }
+
+        return output;
     }
 }
 
