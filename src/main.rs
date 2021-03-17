@@ -51,7 +51,7 @@ use bevy::reflect::TypeUuid;
 use bevy::render::{camera::PerspectiveProjection, pipeline::PipelineDescriptor};
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
 use no_cull_pipeline::PbrNoBackfaceBundle;
-use polytope::{geometry::Point, off, shapes, ElementList, Polytope};
+use polytope::{geometry::Point, off, Concrete, Polytope, Renderable};
 
 mod input;
 mod no_cull_pipeline;
@@ -59,15 +59,12 @@ mod polytope;
 
 fn main() {
     App::build()
-        .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
-        .add_plugin(EguiPlugin)
-        .add_plugin(input::InputPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(load_assets.system())
         .add_system(update_ui_scale_factor.system())
-        .add_system(ui_example.system())
+        .add_system(ui.system())
         .add_system_to_stage(stage::POST_UPDATE, update_changed_polytopes.system())
         .run();
 }
@@ -99,7 +96,7 @@ fn update_ui_scale_factor(mut egui_settings: ResMut<EguiSettings>, windows: Res<
     }
 }
 
-fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>) {
+fn ui(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Renderable>) {
     let ctx = &mut egui_ctx.ctx;
 
     egui::TopPanel::top("top_panel").show(ctx, |ui| {
@@ -114,8 +111,10 @@ fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>
 
         if ui.button("Dual").clicked() {
             for mut p in query.iter_mut() {
-                println!("Dual");
-                *p = p.dual();
+                match p.concrete.dual_mut() {
+                    Some(_) => println!("Dual succeeded"),
+                    None => println!("Dual failed"),
+                }
             }
         }
 
@@ -123,8 +122,8 @@ fn ui_example(mut egui_ctx: ResMut<EguiContext>, mut query: Query<&mut Polytope>
             for mut p in query.iter_mut() {
                 println!("Verf");
 
-                if let Some(verf) = p.verf(0) {
-                    *p = verf
+                if let Some(verf) = p.concrete.verf(0) {
+                    *p = Renderable::new(verf);
                 };
             }
         }
@@ -135,11 +134,10 @@ fn setup(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut shaders: ResMut<Assets<Shader>>,
-    mut pipelines: ResMut<Assets<PipelineDescriptor>>,
 ) {
-    let poly: Polytope = shapes::step_prism(22, &[1, 3]);
-    println!("{}", off::to_src(&poly, Default::default()));
+    let poly = Concrete::step_prism(22, &[1, 3]);
+    // println!("{}", off::to_src(&poly, Default::default()));
+    let poly = Renderable::new(poly);
 
     pipelines.set_untracked(
         no_cull_pipeline::NO_CULL_PIPELINE_HANDLE,
@@ -157,51 +155,27 @@ fn setup(
     );
 
     commands
-        .spawn(PbrNoBackfaceBundle {
-            mesh: meshes.add(poly.get_mesh()),
-            visible: Visible {
-                is_visible: false,
-                ..Default::default()
-            },
-            material: materials.add(Color::rgb(0.93, 0.5, 0.93).into()),
+        .spawn(PbrBundle {
+            mesh: meshes.add(poly.into()),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
             ..Default::default()
         })
-        .with_children(|cb| {
-            cb.spawn(PbrNoBackfaceBundle {
-                mesh: meshes.add(poly.get_wireframe()),
-                material: wf_unselected,
-                ..Default::default()
-            });
-        })
-        .with(poly)
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(-2.0, 2.5, 2.0)),
             ..Default::default()
         })
-        // camera anchor
-        .spawn((
-            GlobalTransform::default(),
-            Transform::from_translation(Vec3::new(0.02, -0.025, -0.05))
-                * Transform::from_translation(Vec3::new(-0.02, 0.025, 0.05))
-                    .looking_at(Vec3::default(), Vec3::unit_y()),
-        ))
-        .with_children(|cb| {
-            // camera
-            cb.spawn(Camera3dBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0)),
-                perspective_projection: PerspectiveProjection {
-                    near: 0.0001,
-                    ..Default::default()
-                },
-                ..Default::default()
-            });
+        .spawn(Camera3dBundle {
+            transform: Transform::from_translation(Vec3::new(-2.0, 2.5, 5.0))
+                .looking_at(Vec3::default(), Vec3::unit_y()),
+            ..Default::default()
         });
 }
 
 fn update_changed_polytopes(
     mut meshes: ResMut<Assets<Mesh>>,
-    polies: Query<(&Polytope, &Handle<Mesh>, &Children), Changed<Polytope>>,
-    wfs: Query<&Handle<Mesh>, Without<Polytope>>,
+    polies: Query<(&Renderable, &Handle<Mesh>, &Children), Changed<Renderable>>,
+    wfs: Query<&Handle<Mesh>, Without<Renderable>>,
 ) {
     for (poly, mesh_handle, children) in polies.iter() {
         let mesh: &mut Mesh = meshes.get_mut(mesh_handle).unwrap();
