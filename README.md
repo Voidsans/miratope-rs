@@ -42,4 +42,4 @@ Miratope does not yet include a library of OFF files. Nevertheless, many of them
 Eventually, they'll be browsable from Miratope itself.
 
 ## Why is the rendering buggy?
-Proper rendering, even in 3D is a work in progress.
+Proper rendering is not finished yet.  Miratope is still a work in progress in many areas.
